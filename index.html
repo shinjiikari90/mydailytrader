@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>시장 추세 분석 터미널 - Institutional Market Sniper</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          screens: {
+            'xs': '400px',
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts (Noto Sans KR for polished look) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    /* Word break control for pristine Korean typography */
+    .keep-all {
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    /* Custom Scrollbar for sleek terminal look */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.2);
+      border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.15);
+    }
+  </style>
+</head>
+<body class="transition-colors duration-300 pb-16 bg-slate-950 text-slate-100 dark:bg-slate-950 dark:text-slate-100">
+
+  <!-- APP STATE MANAGEMENT & RENDER SYSTEM -->
+  <div id="app" class="min-h-screen transition-colors duration-300">
+    
+    <!-- HEADER -->
+    <header class="border-b sticky top-0 z-50 px-4 sm:px-6 py-3 transition-colors duration-300 border-slate-800 bg-slate-900/90 dark:border-slate-800 dark:bg-slate-900/90 backdrop-blur" id="app-header">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+        
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="p-2 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-xl shadow-lg shrink-0">
+            <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-black tracking-tight text-white leading-tight" id="header-title">
+              시장 추세 분석 터미널
+            </h1>
+            <p class="text-[10px] sm:text-xs text-slate-400 font-medium hidden xs:block">
+              글로벌 지수 기반 순환매 포착 및 실시간 기획 분석 플랫폼
+            </p>
+          </div>
+        </div>
+        
+        <!-- HEADER ACTIONS -->
+        <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800">
+          <!-- API KEY CONFIG -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-wider hidden md:inline">Gemini Key:</span>
+            <input 
+              type="password" 
+              id="api-key-input" 
+              placeholder="API Key 입력 (선택)" 
+              class="bg-slate-950/80 border border-slate-800 text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500/50 w-36 font-mono transition"
+            />
+          </div>
+
+          <div class="flex items-center gap-3 shrink-0">
+            <!-- Theme Toggle Button -->
+            <button
+              id="theme-toggle"
+              class="p-2 rounded-lg border border-slate-800 hover:bg-slate-800 text-amber-400 transition-all"
+              aria-label="Toggle Theme"
+            >
+              <svg id="theme-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Moon icon default -->
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </button>
+            
+            <div class="text-right">
+              <span class="text-[9px] text-slate-500 block font-mono">FEED STATUS</span>
+              <span class="text-[10px] text-emerald-500 font-mono font-bold flex items-center gap-1.5 justify-end">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                ACTIVE
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT GRID -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
+      
+      <!-- LEFT COLUMN (8 COLS) -->
+      <section class="lg:col-span-8 flex flex-col gap-6 sm:gap-8">
+        
+        <!-- MARKET INDEX SCOREBOARD -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md" id="index-card">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+            <div>
+              <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2" id="index-title">
+                <span class="w-1 h-4 bg-emerald-500 rounded-sm"></span>
+                주요 지수 동향 및 분석 근거
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5 keep-all">
+                자산 배분 및 투자 비중 설정의 근거가 되는 글로벌 기준 시장 지표 데이터입니다.
+              </p>
+            </div>
+            
+            <!-- MARKET TABS -->
+            <div class="flex bg-slate-950 border border-slate-800 p-1 rounded-xl self-stretch sm:self-auto" id="market-mode-toggle-group">
+              <button 
+                onclick="setMarketMode('KR')" 
+                id="btn-market-kr"
+                class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950"
+              >
+                국내 증시 (KR)
+              </button>
+              <button 
+                onclick="setMarketMode('US')" 
+                id="btn-market-us"
+                class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200"
+              >
+                미국 증시 (US)
+              </button>
+            </div>
+          </div>
+
+          <!-- INDEX CARDS RENDER CONTAINER -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="index-cards-container">
+            <!-- Dynamic Injection -->
+          </div>
+        </div>
+
+        <!-- SECTOR ROTATION MATRIX -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- BULLISH SECTORS -->
+          <div class="rounded-2xl p-5 sm:p-6 border transition-all bg-gradient-to-br from-emerald-950/20 to-slate-900 border-emerald-500/20" id="hot-sector-card">
+            <h3 class="text-sm font-bold text-emerald-500 flex items-center gap-2 mb-4">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              강세 전환 섹터 (Bullish Industry Lineup)
+            </h3>
+            <div class="flex flex-col gap-4" id="hot-sectors-container">
+              <!-- Dynamic Injection -->
+            </div>
+          </div>
+
+          <!-- BEARISH SECTORS -->
+          <div class="rounded-2xl p-5 sm:p-6 border transition-all bg-gradient-to-br from-rose-950/10 to-slate-900 border-rose-500/10" id="cold-sector-card">
+            <h3 class="text-sm font-bold text-rose-500 flex items-center gap-2 mb-4">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              하방 경계 섹터 (Bearish Industry Lineup)
+            </h3>
+            <div class="flex flex-col gap-4" id="cold-sectors-container">
+              <!-- Dynamic Injection -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TARGET WATCHLISTS -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md" id="watchlist-card">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+            <div>
+              <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2" id="watchlist-title">
+                <span class="w-1.5 h-4 bg-teal-500 rounded-sm"></span>
+                전문가 선별 타겟 관심 종목
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5 keep-all">
+                시장 변동성과 거시 수급 유출입 흐름을 근거로 하여 엄선된 투자 타겟입니다.
+              </p>
+            </div>
+
+            <!-- WATCHLIST CAP TABS -->
+            <div class="flex bg-slate-950 border border-slate-800 p-1 rounded-xl w-full sm:w-auto" id="watchlist-tab-group">
+              <button 
+                onclick="setWatchlistTab('under300k')" 
+                id="btn-tab-under300k"
+                class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-slate-800 text-teal-450 font-bold"
+              >
+                30만 원 이하 실속주
+              </button>
+              <button 
+                onclick="setWatchlistTab('allCap')" 
+                id="btn-tab-allCap"
+                class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300"
+              >
+                금액 무제한 핵심 대형주
+              </button>
+            </div>
+          </div>
+
+          <!-- WATCHLIST DESKTOP TABLE -->
+          <div class="hidden sm:block overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="font-mono border-b bg-slate-950 text-slate-400 border-slate-800" id="table-head">
+                <tr>
+                  <th class="p-4 rounded-l-lg font-bold tracking-wider">종목명 및 코드</th>
+                  <th class="p-4 font-bold tracking-wider">기준 가격</th>
+                  <th class="p-4 font-bold tracking-wider">전일비 등락</th>
+                  <th class="p-4 rounded-r-lg font-bold tracking-wider">수급 강도 및 시장 특이동향 기술</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/40" id="watchlist-table-body">
+                <!-- Dynamic Injection -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- WATCHLIST MOBILE CARDS -->
+          <div class="block sm:hidden flex flex-col gap-3" id="watchlist-mobile-container">
+            <!-- Dynamic Injection -->
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN (4 COLS) -->
+      <section class="lg:col-span-4 flex flex-col gap-6 sm:gap-8">
+        
+        <!-- INSTITUTIONAL AI ANALYTICAL ENGINE -->
+        <div class="rounded-2xl p-5 sm:p-6 shadow-xl border transition-all bg-gradient-to-b from-slate-900 to-indigo-950/20 border-indigo-500/20 shadow-indigo-950/20" id="ai-card">
+          <div class="text-center pb-4 border-b border-slate-800" id="ai-header-border">
+            <span class="inline-block px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-wider mb-2 border border-indigo-500/20">
+              AI COGNITIVE SEARCH ENGINE
+            </span>
+            <h3 class="text-sm sm:text-base font-bold text-white" id="ai-title">
+              실시간 마켓 리서치 보고서 발행
+            </h3>
+            <p class="text-[11px] sm:text-xs text-slate-400 mt-1 keep-all">
+              구글 인덱스 및 수급 불균형 데이터를 결합하여 정밀 가공 리포트를 수립합니다.
+            </p>
+          </div>
+
+          <!-- AI Report Result Area -->
+          <div class="my-6">
+            <div id="ai-status-container">
+              <!-- Default state -->
+              <div class="flex flex-col items-center justify-center py-10 px-4 border-2 border-dashed border-slate-800 text-slate-500 rounded-xl text-center">
+                <div class="text-2xl mb-2">📋</div>
+                <p class="text-xs font-semibold">발행된 마켓 브리핑 리포트 없음</p>
+                <p class="text-[10px] mt-1 keep-all">하단의 시장 브리핑 보고서 요청 시 최신 데이터를 취합해 발행합니다.</p>
+              </div>
+            </div>
+            
+            <div id="error-container" class="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs rounded-xl text-center font-semibold hidden">
+              <!-- Error messages go here -->
+            </div>
+          </div>
+
+          <button
+            onclick="generateAIBriefing()"
+            id="btn-generate-report"
+            class="w-full font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md flex items-center justify-center gap-2 text-xs cursor-pointer bg-slate-900 hover:bg-slate-800 text-teal-400 border border-teal-500/30 hover:border-teal-400"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            <span id="btn-text">실시간 마켓 브리핑 리포트 발행</span>
+          </button>
+        </div>
+
+        <!-- MACRO CALENDAR -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md" id="calendar-card">
+          <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-2 mb-4" id="calendar-title">
+            <svg class="w-4.5 h-4.5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            주요 정책 캘린더 및 정부 일정
+          </h3>
+          <p class="text-xs text-slate-400 mb-4 keep-all" id="calendar-desc">
+            자산 가치 및 섹터 투심에 심대한 영향력을 미칠 주요 매크로 일정군입니다.
+          </p>
+          
+          <div class="flex flex-col gap-4" id="events-container">
+            <!-- Dynamic Injection -->
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="max-w-7xl mx-auto px-4 mt-16 text-center text-[10px] text-slate-500 flex flex-col gap-1">
+      <p>© 2026 Institutional Market Sniper Inc. All Rights Reserved.</p>
+      <p class="leading-relaxed max-w-4xl mx-auto keep-all">
+        ※ 본 터미널 시스템에서 수집 및 분석 가공하여 제공하는 정보는 투자자의 의사 결정을 돕는 보조용 리서치 참고자료에 불과하며, 특정 가치의 상승을 보장하거나 정식 투자 자문을 대행하지 않습니다. 모든 금융 거래 자산의 운용 귀책은 투자 당사자 본인에게 있습니다.
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- APPLICATION LOGIC & STATE HANDLING -->
+  <script>
+    // State Setup
+    let isDark = true;
+    let marketMode = 'KR'; // 'KR' or 'US'
+    let watchlistTab = 'under300k'; // 'under300k' or 'allCap'
+    let isGenerating = false;
+
+    // Fixed Standard Core Data
+    const indicesData = {
+      KOSPI: { price: "2,680.12", change: "+1.24%", up: true, desc: "외국인 및 기관의 대형주 중심 동반 순매수 유입 지속" },
+      KOSDAQ: { price: "812.50", change: "+2.85%", up: true, desc: "제약바이오 낙폭과대 인식 및 반도체 소부장 온기 확산" },
+      NASDAQ: { price: "17,842.10", change: "-0.95%", up: false, desc: "고평가 논란에 따른 빅테크 차익실현 매물 출회 및 조정" },
+      SNDP500: { price: "5,475.20", change: "-0.32%", up: false, desc: "순환매 장세 속 필수소비재 및 금융 섹터로의 자금 이동" },
+      DOW: { price: "39,331.00", change: "+0.45%", up: true, desc: "전통 가치주 및 헬스케어 강세로 지수 하방 경직성 확보" },
+    };
+
+    const sectorsData = {
+      KR: {
+        hot: [
+          { name: "바이오/헬스케어", trend: "상승세 강화", reason: "금리 인하 기조 진입에 따른 유동성 유입 및 주요 파이프라인의 글로벌 라이선스 아웃 성과 가시화", topStock: "알테오젠" },
+          { name: "우주항공/방산", trend: "추세적 우상향", reason: "글로벌 지정학적 리스크 지속과 K-방산 추가 해외 수주 모멘텀 유효", topStock: "한화에어로스페이스" }
+        ],
+        cold: [
+          { name: "이차전지", trend: "하방 압력 지속", reason: "글로벌 전기차 캐즘(Chasm) 장기화 및 양극재 판가 하락에 따른 마진 압박 지속", topStock: "에코프로비엠" },
+          { name: "반도체 소부장", trend: "일시적 단기 조정", reason: "글로벌 빅테크 하드웨어 투자 속도 조절론에 따른 동반 밸류에이션 부담 작용", topStock: "HPSP" }
+        ]
+      },
+      US: {
+        hot: [
+          { name: "제약/바이오 빅테크", trend: "자금 유입 지속", reason: "M&A 활성화 및 비만치료제 중심의 실적 성장세 강화, 경기 방어적 성격 부각", topStock: "Eli Lilly" },
+          { name: "전력 인프라 / 유틸리티", trend: "강력한 주도 섹터", reason: "AI 데이터센터 건설 폭증으로 인한 전력망 구축 수요 및 장비 공급 부족 지속", topStock: "GE Vernova" }
+        ],
+        cold: [
+          { name: "반도체 / AI 하드웨어", trend: "차익 매물 출회", reason: "AI 인프라 투자 회수율에 대한 회의론 제기 및 엔비디아 발 칩메이커 단기 과열 해소 국면", topStock: "Nvidia" },
+          { name: "소비재 / 유통", trend: "실적 모멘텀 약화", reason: "고금리 장기화에 따른 가계 가처분 소득 감소 및 소비 심리 위축 영향 직격탄", topStock: "Nike" }
+        ]
+      }
+    };
+
+    const watchlistUnder300k = {
+      KR: [
+        { name: "알테오젠", code: "196170", price: "282,500원", change: "+8.59%", reason: "머크 키트루다 SC 독점 계약의 고정 로열티 유입 가치 재평가 국면 진행" },
+        { name: "에코프로비엠", code: "247540", price: "185,200원", change: "+15.56%", reason: "단기 과매도 구간 진입 후 숏커버링 물량 급증에 따른 기술적 반등 진행" },
+        { name: "한화에어로스페이스", code: "012450", price: "261,000원", change: "-1.25%", reason: "단기 상승 피로감으로 매물 소화 중이나 수주 잔고 기반 우상향 추세 견고" }
+      ],
+      US: [
+        { name: "Palantir (PLTR)", code: "PLTR", price: "$42.10", change: "+5.12%", reason: "상업용 및 국방 AI 솔루션 수주 가속화 및 S&P 500 지수 편입에 따른 자금 유입" },
+        { name: "Nvidia (NVDA)", code: "NVDA", price: "$122.50", change: "-5.40%", reason: "단기 추세 지지선 테스트 단계. AI 인프라 장기 수요 대비 매력적 구간" },
+        { name: "Intel (INTC)", code: "INTC", price: "$30.80", change: "-2.10%", reason: "파운드리 분사 및 구조조정 계획 수립에 따른 바닥 다지기 진행" }
+      ]
+    };
+
+    const watchlistAllCap = {
+      KR: [
+        { name: "삼성바이오로직스", code: "207940", price: "945,000원", change: "+2.14%", reason: "글로벌 빅파마 중심 위탁생산(CMO) 최대 수주 경신 및 안정적인 4공장 가동 실적 부각" },
+        { name: "SK하이닉스", code: "000660", price: "218,500원", change: "-3.15%", reason: "HBM3E 독점적 공급 지위 유지 중이나 대외적 반도체 지수 조정 동조화에 따른 눌림목 형성" },
+        { name: "삼성전자", code: "005930", price: "74,200원", change: "+0.81%", reason: "레거시 D램 가격 안정화 및 고대역폭 메모리 글로벌 엔비디아 퀄 테스트 기대감 고조" }
+      ],
+      US: [
+        { name: "Microsoft (MSFT)", code: "MSFT", price: "$441.20", change: "+0.45%", reason: "애저(Azure) 클라우드 매출 내 AI 기여도 확대 확인 및 기업용 코파일럿 가입자 증가세 지속" },
+        { name: "Eli Lilly (LLY)", code: "LLY", price: "$905.10", change: "+3.72%", reason: "젭바운드 비만치료제의 적응증 확대 승인 및 글로벌 유통 공급망 확장 가시화" },
+        { name: "Apple (AAPL)", code: "AAPL", price: "$221.80", change: "-1.10%", reason: "자체 AI 시스템 '애플 인텔리전스' 적용 기기의 대기 교체 수요 증가로 장기 모멘텀 확보" }
+      ]
+    };
+
+    const eventsData = [
+      { date: "07/08", title: "미국 6월 소비자물가지수(CPI) 발표", impact: "인플레이션 둔화 여부 검증 및 연준의 9월 금리 인하 경로 구체화" },
+      { date: "07/15", title: "정부 밸류업 프로그램 2차 공청회", impact: "저PBR 지주사, 금융 및 자동차 섹터 세제 혜택 가이드라인 구체화 예정" },
+      { date: "07/23", title: "빅테크 실적 발표 본격 돌입", impact: "AI 인프라 설비투자(CAPEX) 증가 추세 유지 및 가시적 매출 기여도 증명 여부 관건" }
+    ];
+
+    // Initialize Theme
+    function initTheme() {
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      isDark = systemPrefersDark;
+      applyTheme();
+    }
+
+    // Toggle Theme
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      isDark = !isDark;
+      applyTheme();
+    });
+
+    // Theme applier
+    function applyTheme() {
+      const root = document.documentElement;
+      const themeIcon = document.getElementById('theme-icon');
+      
+      const appContainer = document.getElementById('app');
+      const header = document.getElementById('app-header');
+      const headerTitle = document.getElementById('header-title');
+      const indexCard = document.getElementById('index-card');
+      const indexTitle = document.getElementById('index-title');
+      const hotSectorCard = document.getElementById('hot-sector-card');
+      const coldSectorCard = document.getElementById('cold-sector-card');
+      const watchlistCard = document.getElementById('watchlist-card');
+      const watchlistTitle = document.getElementById('watchlist-title');
+      const tableHead = document.getElementById('table-head');
+      const aiCard = document.getElementById('ai-card');
+      const aiTitle = document.getElementById('ai-title');
+      const aiHeaderBorder = document.getElementById('ai-header-border');
+      const calendarCard = document.getElementById('calendar-card');
+      const calendarTitle = document.getElementById('calendar-title');
+      const calendarDesc = document.getElementById('calendar-desc');
+
+      if (isDark) {
+        root.classList.add('dark');
+        // Colors & Classes Update (Dark)
+        appContainer.className = "min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-slate-900 transition-colors duration-300 pb-16";
+        header.className = "border-b sticky top-0 z-50 px-4 sm:px-6 py-3 transition-colors duration-300 border-slate-800 bg-slate-900/90 backdrop-blur";
+        headerTitle.className = "text-base sm:text-lg font-black tracking-tight text-white leading-tight";
+        indexCard.className = "bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md";
+        indexTitle.className = "text-sm sm:text-base font-bold text-white flex items-center gap-2";
+        
+        hotSectorCard.className = "rounded-2xl p-5 sm:p-6 border transition-all bg-gradient-to-br from-emerald-950/20 to-slate-900 border-emerald-500/20";
+        coldSectorCard.className = "rounded-2xl p-5 sm:p-6 border transition-all bg-gradient-to-br from-rose-950/10 to-slate-900 border-rose-500/10";
+        
+        watchlistCard.className = "bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md";
+        watchlistTitle.className = "text-sm sm:text-base font-bold text-white flex items-center gap-2";
+        tableHead.className = "font-mono border-b bg-slate-950 text-slate-400 border-slate-800";
+        
+        aiCard.className = "rounded-2xl p-5 sm:p-6 shadow-xl border transition-all bg-gradient-to-b from-slate-900 to-indigo-950/20 border-indigo-500/20 shadow-indigo-950/20";
+        aiTitle.className = "text-sm sm:text-base font-bold text-white";
+        aiHeaderBorder.className = "text-center pb-4 border-b border-slate-800";
+        
+        calendarCard.className = "bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-md";
+        calendarTitle.className = "text-xs sm:text-sm font-bold text-white flex items-center gap-2 mb-4";
+        calendarDesc.className = "text-xs text-slate-400 mb-4 keep-all";
+
+        themeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m2.828 0l-.707-.707m12.02-12.02l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+        `;
+      } else {
+        root.classList.remove('dark');
+        // Colors & Classes Update (Light)
+        appContainer.className = "min-h-screen bg-slate-50 text-slate-800 selection:bg-emerald-500 selection:text-white transition-colors duration-300 pb-16";
+        header.className = "border-b sticky top-0 z-50 px-4 sm:px-6 py-3 transition-colors duration-300 border-slate-200 bg-white/90 backdrop-blur";
+        headerTitle.className = "text-base sm:text-lg font-black tracking-tight text-slate-900 leading-tight";
+        indexCard.className = "bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm";
+        indexTitle.className = "text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2";
+        
+        hotSectorCard.className = "rounded-2xl p-5 sm:p-6 border transition-all bg-white border-slate-200 shadow-sm";
+        coldSectorCard.className = "rounded-2xl p-5 sm:p-6 border transition-all bg-white border-slate-200 shadow-sm";
+        
+        watchlistCard.className = "bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm";
+        watchlistTitle.className = "text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2";
+        tableHead.className = "font-mono border-b bg-slate-100 text-slate-600 border-slate-200";
+        
+        aiCard.className = "rounded-2xl p-5 sm:p-6 shadow-xl border transition-all bg-white border-slate-200 shadow-slate-100";
+        aiTitle.className = "text-sm sm:text-base font-bold text-slate-900";
+        aiHeaderBorder.className = "text-center pb-4 border-b border-slate-100";
+        
+        calendarCard.className = "bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm";
+        calendarTitle.className = "text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2 mb-4";
+        calendarDesc.className = "text-xs text-slate-500 mb-4 keep-all";
+
+        themeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        `;
+      }
+      render();
+    }
+
+    // Set Market Mode (KR vs US)
+    function setMarketMode(mode) {
+      marketMode = mode;
+      
+      const btnKr = document.getElementById('btn-market-kr');
+      const btnUs = document.getElementById('btn-market-us');
+
+      if (mode === 'KR') {
+        btnKr.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow-sm";
+        btnUs.className = `flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-800'}`;
+      } else {
+        btnUs.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow-sm";
+        btnKr.className = `flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-800'}`;
+      }
+
+      render();
+    }
+
+    // Set Watchlist Tab
+    function setWatchlistTab(tab) {
+      watchlistTab = tab;
+      
+      const btnUnder = document.getElementById('btn-tab-under300k');
+      const btnAll = document.getElementById('btn-tab-allCap');
+
+      if (tab === 'under300k') {
+        btnUnder.className = `flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isDark ? 'bg-slate-800 text-teal-400 font-bold' : 'bg-white text-teal-700 shadow-sm font-bold'}`;
+        btnAll.className = "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300";
+      } else {
+        btnAll.className = `flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isDark ? 'bg-slate-800 text-teal-400 font-bold' : 'bg-white text-teal-700 shadow-sm font-bold'}`;
+        btnUnder.className = "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300";
+      }
+
+      render();
+    }
+
+    // Main Render Function
+    function render() {
+      // 1. Render Indices
+      const indicesContainer = document.getElementById('index-cards-container');
+      const cardStyle = isDark 
+        ? "bg-slate-950/40 p-4 rounded-xl border border-slate-800/60 hover:border-slate-700 transition" 
+        : "bg-slate-50 p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 transition shadow-sm shadow-slate-100";
+      const textTitleStyle = isDark ? "text-slate-400 font-bold" : "text-slate-500 font-bold";
+      const mainNumStyle = isDark ? "text-xl sm:text-2xl font-black tracking-tight text-white" : "text-xl sm:text-2xl font-black tracking-tight text-slate-950";
+      const descStyle = isDark ? "text-[11px] text-slate-400 mt-1.5 leading-relaxed keep-all" : "text-[11px] text-slate-500 mt-1.5 leading-relaxed keep-all";
+
+      if (marketMode === 'KR') {
+        indicesContainer.innerHTML = `
+          <!-- KOSPI -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">KOSPI 코스피</span>
+              <span class="text-emerald-500 text-[10px] font-extrabold px-2 py-0.5 bg-emerald-500/10 rounded-full">순매수 우위</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">${indicesData.KOSPI.price}</span>
+              <span class="text-emerald-500 font-bold text-xs">${indicesData.KOSPI.change}</span>
+            </div>
+            <p class="${descStyle}">${indicesData.KOSPI.desc}</p>
+          </div>
+          <!-- KOSDAQ -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">KOSDAQ 코스닥</span>
+              <span class="text-emerald-500 text-[10px] font-extrabold px-2 py-0.5 bg-emerald-500/10 rounded-full">상승 흐름 주도</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">${indicesData.KOSDAQ.price}</span>
+              <span class="text-emerald-500 font-bold text-xs">${indicesData.KOSDAQ.change}</span>
+            </div>
+            <p class="${descStyle}">${indicesData.KOSDAQ.desc}</p>
+          </div>
+          <!-- USD/KRW -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">원/달러 환율</span>
+              <span class="text-emerald-500 text-[10px] font-extrabold px-2 py-0.5 bg-emerald-500/10 rounded-full">원화 가치 상승</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">1,372.50</span>
+              <span class="text-emerald-500 font-bold text-xs">-0.45%</span>
+            </div>
+            <p class="${descStyle}">거시 유동성 리스크가 다소 안정세에 접어드는 국면</p>
+          </div>
+        `;
+      } else {
+        indicesContainer.innerHTML = `
+          <!-- NASDAQ -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">NASDAQ 나스닥</span>
+              <span class="text-rose-500 text-[10px] font-extrabold px-2 py-0.5 bg-rose-500/10 rounded-full">기술적 하락</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">${indicesData.NASDAQ.price}</span>
+              <span class="text-rose-500 font-bold text-xs">${indicesData.NASDAQ.change}</span>
+            </div>
+            <p class="${descStyle}">${indicesData.NASDAQ.desc}</p>
+          </div>
+          <!-- S&P 500 -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">S&P 500</span>
+              <span class="text-rose-500 text-[10px] font-extrabold px-2 py-0.5 bg-rose-500/10 rounded-full">일부 매물 소화</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">${indicesData.SNDP500.price}</span>
+              <span class="text-rose-500 font-bold text-xs">${indicesData.SNDP500.change}</span>
+            </div>
+            <p class="${descStyle}">${indicesData.SNDP500.desc}</p>
+          </div>
+          <!-- DOW -->
+          <div class="${cardStyle}">
+            <div class="flex justify-between items-center">
+              <span class="text-xs ${textTitleStyle}">DOW 다우존스</span>
+              <span class="text-emerald-500 text-[10px] font-extrabold px-2 py-0.5 bg-emerald-500/10 rounded-full">가치 유입세</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1">
+              <span class="${mainNumStyle}">${indicesData.DOW.price}</span>
+              <span class="text-emerald-500 font-bold text-xs">${indicesData.DOW.change}</span>
+            </div>
+            <p class="${descStyle}">${indicesData.DOW.desc}</p>
+          </div>
+        `;
+      }
+
+      // 2. Render Sector Matrix
+      const hotContainer = document.getElementById('hot-sectors-container');
+      const coldContainer = document.getElementById('cold-sectors-container');
+      
+      const subCardClass = isDark
+        ? "p-4 rounded-xl border bg-slate-950/60 border-slate-800/50"
+        : "p-4 rounded-xl border bg-slate-50 border-slate-200/80 shadow-sm";
+      const textMainStyle = isDark ? "text-white" : "text-slate-900";
+      const textDescStyle = isDark ? "text-slate-400" : "text-slate-500";
+      const targetStyle = isDark 
+        ? "text-slate-300 bg-slate-900/60 border-slate-800/30" 
+        : "text-slate-700 bg-white border-slate-200 shadow-sm";
+
+      hotContainer.innerHTML = sectorsData[marketMode].hot.map(sec => `
+        <div class="${subCardClass}">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="font-bold ${textMainStyle} text-xs sm:text-sm">${sec.name}</span>
+            <span class="text-emerald-500 text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 rounded-full">${sec.trend}</span>
+          </div>
+          <p class="text-xs ${textDescStyle} leading-relaxed mb-3 keep-all">${sec.reason}</p>
+          <div class="text-[11px] ${targetStyle} font-mono p-2 rounded border">
+            기관 최우선 타겟: <span class="text-emerald-500 font-bold">${sec.topStock}</span>
+          </div>
+        </div>
+      `).join('');
+
+      coldContainer.innerHTML = sectorsData[marketMode].cold.map(sec => `
+        <div class="${subCardClass}">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="font-bold ${textMainStyle} text-xs sm:text-sm">${sec.name}</span>
+            <span class="text-rose-500 text-[10px] font-bold px-2 py-0.5 bg-rose-500/10 rounded-full">${sec.trend}</span>
+          </div>
+          <p class="text-xs ${textDescStyle} leading-relaxed mb-3 keep-all">${sec.reason}</p>
+          <div class="text-[11px] ${targetStyle} font-mono p-2 rounded border">
+            하향 조정 요인 확인: <span class="text-rose-500 font-bold">${sec.topStock}</span>
+          </div>
+        </div>
+      `).join('');
+
+      // 3. Render Watchlist
+      const activeWatchlist = watchlistTab === 'under300k' 
+        ? watchlistUnder300k[marketMode] 
+        : watchlistAllCap[marketMode];
+
+      // Desktop Table
+      const tableBody = document.getElementById('watchlist-table-body');
+      tableBody.innerHTML = activeWatchlist.map(stock => `
+        <tr class="transition-colors ${isDark ? 'hover:bg-slate-900/20' : 'hover:bg-slate-50/80'}">
+          <td class="p-4 font-bold ${isDark ? 'text-white' : 'text-slate-900'}">
+            <div class="flex items-center gap-2">
+              <span>${stock.name}</span>
+              <span class="text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'} font-mono">(${stock.code})</span>
+            </div>
+          </td>
+          <td class="p-4 font-mono font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}">${stock.price}</td>
+          <td class="p-4 font-mono font-bold ${stock.change.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}">
+            ${stock.change}
+          </td>
+          <td class="p-4 ${isDark ? 'text-slate-400' : 'text-slate-600'} text-[11px] leading-relaxed max-w-xs keep-all">
+            ${stock.reason}
+          </td>
+        </tr>
+      `).join('');
+
+      // Mobile Cards
+      const mobileContainer = document.getElementById('watchlist-mobile-container');
+      const mobileCardStyle = isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200";
+      mobileContainer.innerHTML = activeWatchlist.map(stock => `
+        <div class="p-4 rounded-xl border ${mobileCardStyle} flex flex-col gap-2">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold ${isDark ? 'text-white' : 'text-slate-900'} text-sm">${stock.name}</span>
+              <span class="text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'} font-mono">(${stock.code})</span>
+            </div>
+            <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${stock.change.startsWith('+') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}">
+              {stock.change}
+            </span>
+          </div>
+          <div class="flex justify-between items-baseline py-1 border-b border-dashed ${isDark ? 'border-slate-800/60' : 'border-slate-800/10'}">
+            <span class="text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}">현재 가격</span>
+            <span class="text-sm font-bold font-mono ${isDark ? 'text-slate-200' : 'text-slate-800'}">${stock.price}</span>
+          </div>
+          <p class="text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'} leading-relaxed mt-1 keep-all">
+            <span class="font-semibold text-emerald-500 mr-1">동향 분석:</span> ${stock.reason}
+          </p>
+        </div>
+      `).join('');
+
+      // 4. Render Calendar Events
+      const eventsContainer = document.getElementById('events-container');
+      eventsContainer.innerHTML = eventsData.map(evt => `
+        <div class="${subCardClass}">
+          <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <span class="px-2 py-0.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 font-mono font-bold text-[10px] rounded border border-teal-500/20">
+              ${evt.date}
+            </span>
+            <span class="font-bold ${textMainStyle} text-xs keep-all">${evt.title}</span>
+          </div>
+          <p class="text-[11px] ${textDescStyle} leading-relaxed keep-all">
+            <span class="text-teal-500 font-semibold font-mono">■ 모니터링 합의점:</span> ${evt.impact}
+          </p>
+        </div>
+      `).join('');
+    }
+
+    // ==========================================
+    // GEMINI COGNITIVE ENGINE CALL WITH RETRY & SEARCH
+    // ==========================================
+    async function generateAIBriefing() {
+      if (isGenerating) return;
+      
+      const apiKeyInput = document.getElementById('api-key-input').value.trim();
+      const actualKey = apiKeyInput || apiKey; // fallbacks to global config if empty
+      
+      isGenerating = true;
+      toggleBtnState(true);
+      
+      const statusArea = document.getElementById('ai-status-container');
+      const errorArea = document.getElementById('error-container');
+      errorArea.classList.add('hidden');
+
+      // Loading UI
+      statusArea.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-10 gap-3">
+          <div class="relative">
+            <div class="w-10 h-10 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm">📡</div>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-indigo-500 font-bold">마켓 데이터 및 실시간 이슈 크롤링 중</p>
+            <p class="text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'} mt-1">글로벌 투자 은행 소식 및 정책 연산 중...</p>
+          </div>
+        </div>
+      `;
+
+      const promptText = `
+        현재 글로벌 및 국내 증시 흐름을 분석하고 거시경제적 관점에서 섹터 순환매 구도를 종합 진단해 주십시오.
+        반드시 KOSPI, KOSDAQ, NASDAQ, DOW 지수의 주요 추세를 참고 지표로 삼아 기술해 주세요.
+        상승 주도 섹터(상승 모멘텀)와 소외 또는 하방 압력이 높은 섹터(리스크 관리 필요)를 이성적이고 분석적으로 구분해야 합니다.
+
+        종목 분석 섹션에서는 다음 두 가지 기준군을 나누어 명확한 투자 포인트를 밝혀 주십시오:
+        1. 주당 30만 원(혹은 미화 220달러) 이하 가격대에서 수급 변화 및 특이 매수세가 감지되는 기회 종목
+        2. 금액 조건에 제한 없이 강력한 시장 지배력과 모멘텀을 주도하는 대형 주도 블루칩 핵심 종목
+
+        마지막으로 현재 진행 중인 매크로 이벤트, 연준 정책 방향 및 주요 기업 실적 성과가 시장 전반에 미칠 구체적 영향력을 종합 제언하며 마무리해 주십시오.
+
+        [작성 제약 조건]
+        - 철저히 격식 있고 신뢰성 있는 '수석 시장 전략가(Chief Market Strategist)'의 고품격 분석 어조를 유지해 주십시오.
+        - 가볍고 감정적인 단어, 유행어, 생략어는 철저히 배제하고 격조 높은 한국어 정중 경어체(~습니다, ~입니다)를 사용하십시오.
+        - 가독성을 최대로 높이기 위해 각 섹션별로 명확한 타이틀 구조와 정갈한 이모지 가이드를 사용해 주십시오.
+      `;
+
+      let attempt = 0;
+      const maxRetries = 5;
+
+      const fetchReport = async () => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${actualKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              systemInstruction: {
+                parts: [{
+                  text: "당신은 증권가 최고 권위의 수석 시장 분석가이자 자산운용사 헤드 트레이더입니다. 제공하는 모든 정보는 전문적이고, 계량적이며, 신뢰도 높은 경제 분석 보고서 형식을 갖추어야 합니다. 정중한 경어체를 사용하십시오."
+                }]
+              },
+              tools: [{ google_search: {} }]
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`API Request Failed with status ${response.status}`);
+        }
+
+        return response.json();
+      };
+
+      const runWithRetry = async () => {
+        try {
+          const data = await fetchReport();
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          const groundings = data.candidates?.[0]?.groundingMetadata?.groundingAttributions?.map(a => ({
+            uri: a.web?.uri,
+            title: a.web?.title
+          })) || [];
+
+          if (responseText) {
+            renderAIReport(responseText, groundings);
+          } else {
+            showError("데이터 수집 분석 과정에서 예기치 못한 지연이 발생했습니다. 일시적 트래픽 집중일 수 있으니 잠시 후 재시도하십시오.");
+          }
+        } catch (err) {
+          if (attempt < maxRetries) {
+            attempt++;
+            const delay = Math.pow(2, attempt) * 1000;
+            setTimeout(runWithRetry, delay);
+          } else {
+            showError("실시간 마켓 피드 수신 장치 통신 불량입니다. 유효한 API Key가 입력되었는지 확인 후 거래망 환경을 재점검해 주십시오.");
+          }
+        } finally {
+          isGenerating = false;
+          toggleBtnState(false);
+        }
+      };
+
+      runWithRetry();
+    }
+
+    // Toggle Button Loading State
+    function toggleBtnState(loading) {
+      const btn = document.getElementById('btn-generate-report');
+      const btnText = document.getElementById('btn-text');
+      if (loading) {
+        btn.disabled = true;
+        btnText.innerText = "실시간 데이터 연산 및 추출 중...";
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        btn.disabled = false;
+        btnText.innerText = "실시간 마켓 브리핑 리포트 발행";
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    // Render Success AI Report
+    function renderAIReport(text, groundings) {
+      const statusArea = document.getElementById('ai-status-container');
+      
+      let sourceHTML = '';
+      if (groundings.length > 0) {
+        sourceHTML = `
+          <div class="mt-4 pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}">
+            <h4 class="text-[9px] ${isDark ? 'text-slate-500' : 'text-slate-400'} font-bold uppercase tracking-wider mb-2">실시간 검색 보완 증적 소스</h4>
+            <div class="flex flex-col gap-1.5">
+              ${groundings.map((src, i) => `
+                <a href="${src.uri}" target="_blank" rel="noopener noreferrer" class="text-[10px] text-indigo-500 hover:underline truncate block font-mono">
+                  [출처 ${i+1}] ${src.title || src.uri}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      statusArea.innerHTML = `
+        <div class="border rounded-xl p-4 max-h-[350px] overflow-y-auto custom-scrollbar ${isDark ? 'bg-slate-950/90 border-slate-800' : 'bg-slate-50 border-slate-200'}">
+          <div class="flex items-center gap-1.5 mb-3 text-[10px] text-emerald-500 font-mono bg-emerald-500/10 px-2 py-1 rounded-md w-fit border border-emerald-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+            수석 리서치 보고서 승인 완료
+          </div>
+          <div class="text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'} whitespace-pre-wrap leading-relaxed font-sans text-justify keep-all">
+            ${text}
+          </div>
+          ${sourceHTML}
+        </div>
+      `;
+    }
+
+    // Error Shower
+    function showError(msg) {
+      const errorArea = document.getElementById('error-container');
+      errorArea.innerText = `❌ ${msg}`;
+      errorArea.classList.remove('hidden');
+
+      const statusArea = document.getElementById('ai-status-container');
+      statusArea.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-10 px-4 border-2 border-dashed border-slate-800 text-slate-500 rounded-xl text-center">
+          <div class="text-2xl mb-2">⚠️</div>
+          <p class="text-xs font-semibold">보고서 로딩에 실패하였습니다</p>
+          <p class="text-[10px] mt-1 keep-all">위에 제시된 에러 로그를 검토하십시오.</p>
+        </div>
+      `;
+    }
+
+    // App Initialization
+    window.onload = () => {
+      initTheme();
+    };
+  </script>
+</body>
+</html>
